@@ -48,15 +48,11 @@ public class Program
         
        // await Program.CreateCustomersWithOrders(serviceProvider, redisProvider);
        //  await RetrieveAllCustomersWithOrders(redisProvider, redisConnection, serviceProvider);
-       //cal GetAllCustomers method to fetch all customers
-       var stopwatch = Stopwatch.StartNew();
-        var allCustomers = await GetAllCustomersAsync(_multiplexer, db);
-        stopwatch.Stop();
-        var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
-        Console.WriteLine($"Fetched all customers. Total count: {allCustomers.Count}");
-        Console.WriteLine($"GetAllCustomersAsync took {elapsedMilliseconds} milliseconds.");
-        //write the first retrieved customer to the console
-        Console.WriteLine(JsonConvert.SerializeObject(allCustomers[0], Formatting.Indented));
+
+        //call GetCustomers method to fetch all customers   
+        await GetCustomers(_multiplexer, db);
+        //call GetAllOrdersAsync method to fetch all orders 
+        await GetOrders(_multiplexer, db);
 
         var tasks = new List<Task>();
        
@@ -129,6 +125,24 @@ public class Program
         return customers;
     }
 
+    //Create GetAllOrdersAsync method to fetch all orders
+    public static async Task<List<Order>> GetAllOrdersAsync(IConnectionMultiplexer multiplexer, IDatabase db)
+    {
+        var server = multiplexer.GetServer(multiplexer.GetEndPoints().First());
+        var keys = server.Keys(pattern: "Order:*").Select(k => k.ToString()).ToArray();
+
+        var tasks = keys.Select(key => db.ExecuteAsync("JSON.GET", key)).ToArray();
+
+        await Task.WhenAll(tasks);
+
+        var orders = tasks
+            .Where(t => !t.Result.IsNull)
+            .Select(t => JsonConvert.DeserializeObject<Order>(t.Result.ToString()))
+            .ToList();
+
+        return orders;
+    }
+
     public static async Task CreateCustomersWithOrders(IServiceProvider serviceProvider, IRedisConnectionProvider redisProvider)
     {
             var customerCollection = redisProvider.RedisCollection<Customer>();
@@ -161,7 +175,7 @@ public class Program
                     {
                         Id = $"order{i}-{j}",
                         CustomerId = customer.Id,
-                        OrderDate = DateTime.UtcNow.AddDays(-j),
+                        OrderDate = DateTime.UtcNow.AddDays(-j).ToString("yyyy-MM-dd"),
                         TotalAmount = (i * 100) + j
                     };
 
@@ -220,6 +234,29 @@ public class Program
         }
 
         return customers;
+    }
+
+    public static async Task GetCustomers(IConnectionMultiplexer _multiplexer, IDatabase db)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var allCustomers = await GetAllCustomersAsync(_multiplexer, db);
+        stopwatch.Stop();
+        var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+        Console.WriteLine($"Fetched all customers. Total count: {allCustomers.Count}");
+        Console.WriteLine($"GetAllCustomersAsync took {elapsedMilliseconds} milliseconds.");
+        Console.WriteLine(JsonConvert.SerializeObject(allCustomers[0], Formatting.Indented));
+    }
+
+    //create GetOrders with stopwatch
+    public static async Task GetOrders(IConnectionMultiplexer _multiplexer, IDatabase db)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var allOrders = await GetAllOrdersAsync(_multiplexer, db);
+        stopwatch.Stop();
+        var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+        Console.WriteLine($"Fetched all orders. Total count: {allOrders.Count}");
+        Console.WriteLine($"GetAllOrdersAsync took {elapsedMilliseconds} milliseconds.");
+        Console.WriteLine(JsonConvert.SerializeObject(allOrders[0], Formatting.Indented));
     }
 
     // private static async Task InsertSampleProduct(IRedisCollection<Product> productCollection)

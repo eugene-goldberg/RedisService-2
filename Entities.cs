@@ -52,7 +52,7 @@ public class Order
     public string CustomerId { get; set; }
     public List<OrderProduct> Products { get; set; }
     public decimal TotalAmount { get; set; }
-    public DateTime OrderDate { get; set; }
+    public string OrderDate { get; set; }
     public string Status { get; set; }
 }
 
