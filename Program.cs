@@ -14,10 +14,23 @@ using System.Net.NetworkInformation;
 
 public class Program
 {
+    private static IConnectionMultiplexer _multiplexer;
     public static async Task Main(string[] args)
     {
         var services = new ServiceCollection();
         ConfigureServices(services);
+
+        
+
+        var config = new ConfigurationOptions
+        {
+            EndPoints = { { "localhost", 6379 } },
+            SyncTimeout = 5000
+        };
+
+        _multiplexer = ConnectionMultiplexer.Connect(config);
+
+        var db = _multiplexer.GetDatabase();
 
         var serviceProvider = services.BuildServiceProvider();
         var redisProvider = serviceProvider.GetRequiredService<IRedisConnectionProvider>();
@@ -28,6 +41,8 @@ public class Program
         var productCollection = redisProvider.RedisCollection<Product>();
         var orderCollection = redisProvider.RedisCollection<Order>();
 
+        
+
         // Uncomment the line below if you want to insert the product initially
         //await InsertSampleProduct(productCollection);
         
@@ -35,11 +50,13 @@ public class Program
        //  await RetrieveAllCustomersWithOrders(redisProvider, redisConnection, serviceProvider);
        //cal GetAllCustomers method to fetch all customers
        var stopwatch = Stopwatch.StartNew();
-        var allCustomers = await GetAllCustomersAsync(redisConnection);
+        var allCustomers = await GetAllCustomersAsync(_multiplexer, db);
         stopwatch.Stop();
         var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
         Console.WriteLine($"Fetched all customers. Total count: {allCustomers.Count}");
         Console.WriteLine($"GetAllCustomersAsync took {elapsedMilliseconds} milliseconds.");
+        //write the first retrieved customer to the console
+        Console.WriteLine(JsonConvert.SerializeObject(allCustomers[0], Formatting.Indented));
 
         var tasks = new List<Task>();
        
@@ -95,35 +112,21 @@ public class Program
         return customerJson.IsNullOrEmpty ? null : JsonConvert.DeserializeObject<Customer>(customerJson);
     }
 
-    public static async Task<List<Customer>> GetAllCustomersAsync(IConnectionMultiplexer multiplexer)
+    public static async Task<List<Customer>> GetAllCustomersAsync(IConnectionMultiplexer multiplexer, IDatabase db)
     {
         var server = multiplexer.GetServer(multiplexer.GetEndPoints().First());
         var keys = server.Keys(pattern: "Customer:*").Select(k => k.ToString()).ToArray();
 
-        var db = multiplexer.GetDatabase();
-        // var customerTasks = keys.Select(async key =>
-        // {
-        //     var customerJson = await db.StringGetAsync(key);
-        //     return customerJson.IsNullOrEmpty ? null : JsonConvert.DeserializeObject<Customer>(customerJson);
-        // });
+        var tasks = keys.Select(key => db.ExecuteAsync("JSON.GET", key)).ToArray();
 
-          var tasks = keys.Select(async key =>
-        {
-            var db = multiplexer.GetDatabase();
-            var customerJson = await db.ExecuteAsync("JSON.GET", key);
-            var customer = customerJson.IsNull ? null : JsonConvert.DeserializeObject<Customer>(customerJson.ToString());
-            if (customer == null) return null;
-            
-           // await Program.CreateOrdersIndex(serviceProvider);
-             
-           // var orders = orderCollection.Where(o => o.CustomerId == customer.Id).ToList();
-                
-            return new { Customer = customer };
-        }).ToList();
+        await Task.WhenAll(tasks);
 
-        var customers = await Task.WhenAll(tasks);
-        //return customers.Where(c => c != null).ToList();
-        return customers.Select(c => c.Customer).ToList();
+        var customers = tasks
+            .Where(t => !t.Result.IsNull)
+            .Select(t => JsonConvert.DeserializeObject<Customer>(t.Result.ToString()))
+            .ToList();
+
+        return customers;
     }
 
     public static async Task CreateCustomersWithOrders(IServiceProvider serviceProvider, IRedisConnectionProvider redisProvider)
