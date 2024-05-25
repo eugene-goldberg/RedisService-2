@@ -50,10 +50,12 @@ public class Program
        //  await RetrieveAllCustomersWithOrders(redisProvider, redisConnection, serviceProvider);
 
         //call GetCustomers method to fetch all customers   
-        await GetCustomers(_multiplexer, db);
+       // await GetCustomers(_multiplexer, db);
         //call GetAllOrdersAsync method to fetch all orders 
-        await GetOrders(_multiplexer, db);
-
+       // await GetOrders(_multiplexer, db);
+        //call GetAllCustomersWithOrdersAsync method to fetch all customers with their orders
+       // var customerOrders = await GetAllCustomersWithOrdersAsync(_multiplexer, db);
+        await GetCustomersWithOrders(_multiplexer, db);
         var tasks = new List<Task>();
        
         // Retrieve all customers with their orders and display the time taken
@@ -142,6 +144,52 @@ public class Program
 
         return orders;
     }
+
+public static async Task<Dictionary<Customer, List<Order>>> GetAllCustomersWithOrdersAsync(IConnectionMultiplexer multiplexer, IDatabase db)
+{
+    var server = multiplexer.GetServer(multiplexer.GetEndPoints().First());
+    var customerKeys = server.Keys(pattern: "Customer:*").Select(k => k.ToString()).ToArray();
+    var orderKeys = server.Keys(pattern: "Order:*").Select(k => k.ToString()).ToArray();
+
+    var customerTasks = customerKeys.Select(key => db.ExecuteAsync("JSON.GET", key)).ToArray();
+    var orderTasks = orderKeys.Select(key => db.ExecuteAsync("JSON.GET", key)).ToArray();
+
+    await Task.WhenAll(customerTasks);
+    await Task.WhenAll(orderTasks);
+
+    var customers = customerTasks
+        .Where(t => !t.Result.IsNull)
+        .Select(t => JsonConvert.DeserializeObject<Customer>(t.Result.ToString()))
+        .ToList();
+
+    var orders = orderTasks
+        .Where(t => !t.Result.IsNull)
+        .Select(t => JsonConvert.DeserializeObject<Order>(t.Result.ToString()))
+        .ToList();
+
+    var customerOrders = new Dictionary<Customer, List<Order>>();
+
+   // var customerOrders = new List<Order>();
+
+    foreach (var customer in customers)
+    {
+        var ordersForCustomer = orders.Where(o => o.CustomerId == customer.Id).ToList();
+        customerOrders.Add(customer, ordersForCustomer);
+    }
+
+    return customerOrders;
+}
+
+public static async Task GetCustomersWithOrders(IConnectionMultiplexer _multiplexer, IDatabase db) {
+    var stopwatch = Stopwatch.StartNew();
+    var allCustomersWithOrders = await GetAllCustomersWithOrdersAsync(_multiplexer, db);
+    stopwatch.Stop();
+    var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+    Console.WriteLine($"Fetched all customers with their orders. Total count: {allCustomersWithOrders.Count}");
+    Console.WriteLine($"GetAllCustomersWithOrdersAsync took {elapsedMilliseconds} milliseconds.");
+    Console.WriteLine(JsonConvert.SerializeObject(allCustomersWithOrders.First(), Formatting.Indented));
+}
+
 
     public static async Task CreateCustomersWithOrders(IServiceProvider serviceProvider, IRedisConnectionProvider redisProvider)
     {
