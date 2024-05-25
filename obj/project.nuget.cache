@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "dgSpecHash": "/Sl9x7wVAdjZvIKSRe2MmXXrU8MqrxwYFPoWiRnbdd6lmdAmU6W0IJoQCDvindQEV5dctrETw+Nsdi6s5FqgeQ==",
+  "success": true,
+  "projectFilePath": "/Users/eugene/dev/redis/RedisService-2/RedisService-2.csproj",
+  "expectedPackageFiles": [
+    "/Users/eugene/.nuget/packages/microsoft.bcl.asyncinterfaces/5.0.0/microsoft.bcl.asyncinterfaces.5.0.0.nupkg.sha512",
+    "/Users/eugene/.nuget/packages/microsoft.extensions.dependencyinjection/8.0.0/microsoft.extensions.dependencyinjection.8.0.0.nupkg.sha512",
+    "/Users/eugene/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/8.0.0/microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512",
+    "/Users/eugene/.nuget/packages/microsoft.extensions.logging.abstractions/6.0.0/microsoft.extensions.logging.abstractions.6.0.0.nupkg.sha512",
+    "/Users/eugene/.nuget/packages/newtonsoft.json/13.0.1/newtonsoft.json.13.0.1.nupkg.sha512",
+    "/Users/eugene/.nuget/packages/pipelines.sockets.unofficial/2.2.8/pipelines.sockets.unofficial.2.2.8.nupkg.sha512",
+    "/Users/eugene/.nuget/packages/redis.om/0.7.1/redis.om.0.7.1.nupkg.sha512",
+    "/Users/eugene/.nuget/packages/stackexchange.redis/2.7.33/stackexchange.redis.2.7.33.nupkg.sha512",
+    "/Users/eugene/.nuget/packages/system.io.pipelines/5.0.1/system.io.pipelines.5.0.1.nupkg.sha512",
+    "/Users/eugene/.nuget/packages/system.text.json/5.0.2/system.text.json.5.0.2.nupkg.sha512",
+    "/Users/eugene/.nuget/packages/ulid/1.2.6/ulid.1.2.6.nupkg.sha512"
+  ],
+  "logs": []
+}
